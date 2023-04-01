@@ -1,0 +1,5 @@
+void ADS1115_setup(){
+  adsA.begin(0x4A);
+  adsB.begin(0x4B);
+  adsB.setGain(GAIN_SIXTEEN);
+}

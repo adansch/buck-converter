@@ -1,0 +1,33 @@
+void NTP_loop(){
+  timeClient.update();
+  unsigned long unix_epoch = timeClient.getEpochTime();    // Get Unix epoch time from the NTP server
+
+  second_ = second(unix_epoch);
+  if (last_second != second_) {
+ 
+    minute_ = minute(unix_epoch);
+    hour_   = hour(unix_epoch);
+    day_    = day(unix_epoch);
+    month_  = month(unix_epoch);
+    year_   = year(unix_epoch);
+
+ 
+
+    Time[7] = second_ % 10 + 48;
+    Time[6] = second_ / 10 + 48;
+    Time[4]  = minute_ % 10 + 48;
+    Time[3]  = minute_ / 10 + 48;
+    Time[1]  = hour_   % 10 + 48;
+    Time[0]  = hour_   / 10 + 48;
+
+ 
+
+    Date[0]  = day_   / 10 + 48;
+    Date[1]  = day_   % 10 + 48;
+    Date[3]  = month_  / 10 + 48;
+    Date[4]  = month_  % 10 + 48;
+    Date[8] = (year_   / 10) % 10 + 48;
+    Date[9] = year_   % 10 % 10 + 48;
+    last_second = second_;
+  }
+}

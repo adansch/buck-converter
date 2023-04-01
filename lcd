@@ -1,0 +1,77 @@
+void LCD_setup(){
+  Wire.begin();
+  Wire.beginTransmission(0x27);
+ 
+  lcd.begin(20, 4);
+  lcd.setBacklight(255);
+}
+/*void LCD_loop(){
+   if (count_value == 1){
+       lcd.setCursor(0,0);
+       lcd.print("Rad : ");
+       lcd.print(Pyranometer);
+       lcd.print(" W/m2");
+       lcd.setCursor(0,1);
+       lcd.print("Arus PV1: ");
+       lcd.print(ArusPV1);
+       lcd.print(" A");
+       lcd.setCursor(0,2);
+       lcd.print("Arus PV2: ");
+       lcd.print(ArusPV2);
+       lcd.print(" A");
+       lcd.setCursor(0,3);
+       lcd.print("Arus PV3: ");
+       lcd.print(ArusPV3);
+       lcd.print(" A");
+  }else if (count_value == 2){    
+       lcd.setCursor(1,0); // Column, line
+       lcd.print("PV POLYCRYSTALLINE");
+       lcd.setCursor(0,1);
+       lcd.print("ARUS     : ");
+       lcd.print(ArusPV2);
+       lcd.print(" A");
+       lcd.setCursor(0,2);
+       lcd.print("TEGANGAN : ");
+       lcd.print(TeganganPV2);
+       lcd.print(" V");
+       lcd.setCursor(0,3);
+       lcd.print("SUHU     : ");
+       lcd.print(SuhuPV2);
+       lcd.print(" *C");
+  }else if (count_value == 3){
+       lcd.setCursor(3,0); // Column, line
+       lcd.print("PV AMORPHOUS");
+       lcd.setCursor(0,1);
+       lcd.print("ARUS     : ");
+       lcd.print(ArusPV3);
+       lcd.print(" A");
+       lcd.setCursor(0,2);
+       lcd.print("TEGANGAN : ");
+       lcd.print(TeganganPV3);
+       lcd.print(" V");
+       lcd.setCursor(0,3);
+       lcd.print("SUHU     : ");
+       lcd.print(SuhuPV3);
+       lcd.print(" *C");
+  }else if (count_value == 4){
+       lcd.setCursor(1,0); // Column, line
+       lcd.print("PV MONOCRYSTALLINE");
+       lcd.setCursor(0,1);
+       lcd.print("ARUS     : ");
+       lcd.print(ArusPV1);
+       lcd.print(" A");
+       lcd.setCursor(0,2);
+       lcd.print("TEGANGAN : ");
+       lcd.print(TeganganPV1);
+       lcd.print(" V");  
+       lcd.setCursor(0,3);
+       lcd.print("SUHU     : ");
+       lcd.print(SuhuPV1);
+       lcd.print(" *C");
+  }else if (count_value == 5){
+       lcd.setCursor(4,1);
+       lcd.print(Date);
+       lcd.setCursor(5,2);
+       lcd.print(Time);
+  }
+}*/

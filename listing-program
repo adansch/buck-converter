@@ -1,0 +1,250 @@
+#include <SD.h>
+#include <SPI.h>
+#include <stdlib.h>
+#include <PWM.h>
+#include <Wire.h>
+#include <DS3231.h>
+#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
+#include "RTClib.h"
+
+char daysOfTheWeek[7][12] = {"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"};
+
+LiquidCrystal_I2C lcd(0x27, 20, 4); // 0x27 is the default I2C bu//pin yang disambungkan antara arduino dengan LCD
+
+float SensorVi = A0; //Sensor tegangan input
+float SensorVo = A2; //Sensor tegangan output
+
+
+const int pinADC1 = A1;
+const int pinADC2 = A3;
+float sensitivitas1 = 0.185; //tegantung sensor arus yang digunakan, yang ini 30A
+float sensitivitas2 = 0.185; //tegantung sensor arus yang digunakan, yang ini 30A
+float nilaiadc1;
+float nilaiadc2;
+float teganganoffset1 = 2.502; //nilai pembacaan offset saat tidak ada arus yang lewat
+float teganganoffset2 = 2.503; //nilai pembacaan offset saat tidak ada arus yang lewat
+float tegangan1;
+float tegangan2;
+float Ii;
+float Io;
+
+float Persen_Kesalahan_Vo;
+float Persen_Kesalahan_Io;
+
+int32_t frequency = 20000; //COBA TES FREKUENSI LAIN
+
+File sdcard_file;
+RTC_DS3231 rtc;
+RTCDateTime dt;
+
+int pwm; // buck pwm
+int CS_pin = 10;
+int cnt;
+char buff[10];
+
+void setup()
+{
+  lcd.begin();
+  lcd.backlight(); //prosedur pemanggilan fungsi LCD
+
+  Serial.begin(9600);
+  DateTime now = rtc.now();
+
+  InitTimersSafe();
+  SetPinFrequencySafe(9, frequency);
+  pwmWrite(9, pwm);
+
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
+  pinMode(A3, INPUT);
+  pinMode(CS_pin, OUTPUT);
+
+  if (! rtc.begin()) {
+    Serial.println("tidak menemukan RTC");
+    while (1);
+  }
+
+  if (rtc.lostPower()) {
+    Serial.println("RTC lost power, lets set the time!");
+    // following line sets the RTC to the date & time this sketch was compiled
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // This line sets the RTC with an explicit date & time, for example to set
+    // January 21, 2014 at 3am you would call:
+    //rtc.adjust(DateTime(2022, 8, 24, 18, 22, 0));
+  }
+
+  if (SD.begin())
+  {
+    Serial.println("SD card is ready to use.");
+  }
+  else
+  {
+    Serial.println("SD card initialization failed");
+    return;
+  }
+
+  Serial.print("Tanggal");
+  Serial.print("\t    ");
+  Serial.print("Hari");
+  Serial.print("     ");
+  Serial.print("Jam");
+  Serial.print("     ");
+  Serial.print("Vi");
+  Serial.print("   ");
+  Serial.print("Vo");
+  Serial.print("   ");
+  Serial.print("Ii");
+  Serial.print("   ");
+  Serial.print("Io");
+  Serial.println();
+
+  sdcard_file.print("Tanggal");
+  sdcard_file.print("\t    ");
+  sdcard_file.print("Hari");
+  sdcard_file.print("     ");
+  sdcard_file.print("Jam");
+  sdcard_file.print("     ");
+  sdcard_file.print("Vi");
+  sdcard_file.print("   ");
+  sdcard_file.print("Vo");
+  sdcard_file.print("   ");
+  sdcard_file.print("Ii");
+  sdcard_file.print("   ");
+  sdcard_file.print("Io");
+  sdcard_file.println();
+}
+
+void loop()
+{
+  // Baca RTC
+  DateTime now = rtc.now();
+
+  //Baca Sensor Tegangan
+  SensorVi = analogRead(A0);
+  SensorVo = analogRead(A2);
+
+  //Konversi Sensor Tegangan
+  float Vi = (SensorVi / 18.6); //SensorVi ialah ADC, 18.6 ialah ADC/Vmax input
+  float Persen_Kesalahan_Vi = 0.052 * Vi;
+  float ViCal = Vi - Persen_Kesalahan_Vi;
+  float Vo = (SensorVo / 18.6);
+  float Persen_Kesalahan_Vo = 0.054 * Vo;
+  float VoCal = Vo - Persen_Kesalahan_Vo;
+
+
+  //Baca Sensor Arus
+  nilaiadc1 = analogRead(pinADC1);
+  nilaiadc2 = analogRead(pinADC2);
+  tegangan1 = (nilaiadc1 / 1024.0) * 5;
+  tegangan2 = (nilaiadc2 / 1024.0) * 5;
+  Ii = abs((teganganoffset1 - tegangan1) / sensitivitas1);
+  Io = abs((teganganoffset2 - tegangan2) / sensitivitas2);
+
+  //Baca LCD
+  lcd.setCursor(0, 1);
+  lcd.print("Vi:");
+  lcd.print(ViCal);
+  lcd.setCursor(0, 2);
+  lcd.print("Ii:");
+  lcd.print(Ii);
+  lcd.setCursor(11, 1);
+  lcd.print("Vo:");
+  lcd.print(VoCal);
+  lcd.setCursor(11, 2);
+  lcd.print("Io:");
+  lcd.print(Io); //2,4951 2,5000 2,4902
+  lcd.setCursor(0, 3);
+  lcd.print("Pi:");
+  lcd.print(Vi*Ii, 1);
+  lcd.setCursor(11, 3);
+  lcd.print("Po:");
+  lcd.print(Vo*Io, 1);
+  delay(500);
+
+  Serial.print(now.year(), DEC);
+  Serial.print('/');
+  Serial.print(now.month(), DEC);
+  Serial.print('/');
+  Serial.print(now.day(), DEC);
+  Serial.print(" (");
+  Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+  Serial.print(") ");
+  Serial.print(now.hour(), DEC);
+  Serial.print(':');
+  Serial.print(now.minute(), DEC);
+  Serial.print(':');
+  Serial.print(now.second(), DEC);
+  Serial.print(" ");
+  Serial.print(Vi);
+  Serial.print(" ");
+  Serial.print(Vo);
+  Serial.print(" ");
+  Serial.print(Ii);
+  Serial.print(" ");
+  Serial.print(Io);
+  Serial.print(" ");
+  Serial.println();
+
+//      pwmWrite(9,pwm);
+//      pwm=20;
+//      lcd.setCursor(0, 0);
+//      lcd.print("Charging Battery");
+//      lcd.print(" ");
+//      lcd.print(3.7);
+//      lcd.print("V");
+
+      pwmWrite(9,pwm);
+      pwm=27;
+      lcd.setCursor(0, 0);
+      lcd.print("Charging Battery");
+      lcd.print(" ");
+      lcd.print(5);
+      lcd.print("V");
+      
+//      pwmWrite(9,pwm);
+//      pwm=48;
+//      lcd.setCursor(0, 0);
+//      lcd.print("Charging Battery");
+//      lcd.print(" ");
+//      lcd.print(9);
+//      lcd.print("V");
+
+  sdcard_file = SD.open("data.txt", FILE_WRITE);
+
+  if (sdcard_file)
+  {
+    // sdcard_file.print(dt.second);
+    // sdcard_file.print("     ");
+    sdcard_file.print(now.year(), DEC);
+    sdcard_file.print('/');
+    sdcard_file.print(now.month(), DEC);
+    sdcard_file.print('/');
+    sdcard_file.print(now.day(), DEC);
+    sdcard_file.print(" (");
+    sdcard_file.print(daysOfTheWeek[now.dayOfTheWeek()]);
+    sdcard_file.print(") ");
+    sdcard_file.print(now.hour(), DEC);
+    sdcard_file.print(':');
+    sdcard_file.print(now.minute(), DEC);
+    sdcard_file.print(':');
+    sdcard_file.print(now.second(), DEC);
+    sdcard_file.print(" ");
+    sdcard_file.print(ViCal);
+    sdcard_file.print(" ");
+    sdcard_file.print(VoCal);
+    sdcard_file.print(" ");
+    sdcard_file.print(Ii);
+    sdcard_file.print(" ");
+    sdcard_file.print(Io);
+    sdcard_file.print(" ");
+    sdcard_file.println();
+    sdcard_file.close();
+  }
+  else
+  {
+    Serial.println("error opening data.txt");
+  }
+  delay(1000);
+}
